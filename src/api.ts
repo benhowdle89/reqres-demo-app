@@ -12,11 +12,11 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = RequestInit & {
+type RequestOptions = Omit<RequestInit, 'body'> & {
   token?: string
   usePublicProjectKey?: boolean
   useManageProjectKey?: boolean
-  body?: any
+  body?: unknown
   require?: 'public' | 'manage' | 'session'
 }
 

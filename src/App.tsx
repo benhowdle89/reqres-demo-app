@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   AppUserProfile,
@@ -183,6 +183,9 @@ export default function App() {
   const [requestLogs, setRequestLogs] = useState<ApiRequestLog[]>([]);
   const [requestToast, setRequestToast] = useState<ApiRequestLog | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
+  const [showAccessId, setShowAccessId] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const queueRef = useRef<HTMLElement | null>(null);
 
   const configWarnings = useMemo(() => {
     const issues: string[] = [];
@@ -194,6 +197,10 @@ export default function App() {
   }, [config]);
 
   const configReady = configWarnings.length === 0;
+  const sessionActive = Boolean(
+    session && hasStoredSessionToken(config) && !isSessionExpired(session)
+  );
+  const pendingAccess = Boolean(magicResult || tokenInput.trim().length > 0);
 
   const visibleTodos = useMemo(() => {
     if (filter === "all") return todos;
@@ -244,7 +251,11 @@ export default function App() {
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(SESSION_STORAGE_KEY);
     }
+    setShowAccessId(false);
     setStatus("Signed out.");
+    setTimeout(() => {
+      emailInputRef.current?.focus();
+    }, 0);
   };
 
   // Fail fast on missing env config, before making any network calls.
@@ -790,11 +801,14 @@ export default function App() {
             label="Division"
             value={config.projectId ? `#${config.projectId}` : "Missing"}
           />
-          <Stat label="Access status" value={session ? "Active" : "Inactive"} />
+          <Stat
+            label="Access status"
+            value={sessionActive ? "Active" : "Inactive"}
+          />
           <Stat
             label="Tasks"
             value={
-              session
+              sessionActive
                 ? loadingTodos
                   ? "Loading..."
                   : `${totalTodos} total`
@@ -822,124 +836,158 @@ export default function App() {
       </div>
 
       <main className="content-grid">
-        <section className="card">
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">Access</p>
-              <h2>Request access</h2>
-              <p className="muted">
-                Enter your corporate email to request access to the register.
-              </p>
-            </div>
-          </div>
-
-          <div className="field">
-            <span>Corporate email</span>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="taylor@example.com"
-            />
-          </div>
-          <button
-            className="btn primary"
-            type="button"
-            onClick={handleRequestLink}
-            disabled={requesting || !configReady || Boolean(session)}
-          >
-            {requesting ? "Submitting..." : "Request access"}
-          </button>
-          {session && (
-            <div className="callout">
-              <div className="callout-title">Access already active</div>
-              <p className="muted">
-                This operator session can create and manage records. Sign out to
-                request a new access code.
-              </p>
-            </div>
-          )}
-          {magicResult && (
-            <div className="callout">
-              <div className="callout-title">Access request issued</div>
-              {magicResult.token ? (
-                <p className="muted">
-                  An access code was generated for this environment. Enter it
-                  below to continue.
-                </p>
-              ) : (
-                <p className="muted">Access request sent. Check your email.</p>
-              )}
-              <div className="token-box">
-                <code>
-                  {magicResult.token ||
-                    magicResult.magicLink ||
-                    "access code pending..."}
-                </code>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="card">
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">Identity</p>
-              <h2>Confirm identity</h2>
-              <p className="muted">Enter the access code to begin work.</p>
-            </div>
-          </div>
-
-          <div className="field">
-            <span>Access code</span>
-            <input
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="enter access code"
-            />
-          </div>
-
-          <div className="actions">
-            <button
-              className="btn primary"
-              type="button"
-              onClick={handleVerifyToken}
-              disabled={verifying || !configReady}
-            >
-              {verifying ? "Confirming..." : "Confirm access"}
-            </button>
-            {session && (
-              <button
-                className="btn ghost"
-                type="button"
-                onClick={clearSession}
-              >
-                Sign out
-              </button>
-            )}
-          </div>
-
-          {session && (
-            <div className="session">
+        {sessionActive ? (
+          <section className="card">
+            <div className="card-header">
               <div>
-                <p className="muted">Access ID</p>
-                <code className="session-token">{session.token}</code>
+                <p className="eyebrow">Access</p>
+                <h2>Operator access</h2>
+                <p className="muted">
+                  Access is active for this operator. Records are scoped to this
+                  session.
+                </p>
               </div>
-              <div className="session-meta">
-                <span>Division #{session.projectId}</span>
-                <span>Valid until {toDate(session.expiresAt)}</span>
+            </div>
+
+            <div className="session">
+              <div className="profile-grid">
+                <div>
+                  <p className="muted tiny">Operator email</p>
+                  <span className="strong">
+                    {profile?.email || session?.email || "On file"}
+                  </span>
+                </div>
+                <div>
+                  <p className="muted tiny">Division</p>
+                  <span className="strong">#{session?.projectId}</span>
+                </div>
+                <div>
+                  <p className="muted tiny">Status</p>
+                  <span className="strong">{profile?.status || "active"}</span>
+                </div>
+                <div>
+                  <p className="muted tiny">Valid until</p>
+                  <span className="strong">{toDate(session?.expiresAt)}</span>
+                </div>
               </div>
-              {profile && (
-                <div className="session-meta profile-row">
-                  <span>{profile.email}</span>
-                  <span>Status: {profile.status}</span>
-                  <span>Operator ID: {profile.id.slice(0, 8)}...</span>
+
+              <div className="actions">
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() =>
+                    queueRef.current?.scrollIntoView({ block: "start" })
+                  }
+                >
+                  Continue to work queue
+                </button>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={clearSession}
+                >
+                  Sign out
+                </button>
+                <button
+                  className="btn ghost"
+                  type="button"
+                  onClick={() => setShowAccessId((prev) => !prev)}
+                >
+                  {showAccessId ? "Hide access ID" : "Show access ID"}
+                </button>
+              </div>
+
+              {showAccessId && (
+                <div className="token-box">
+                  <p className="muted tiny">Session token</p>
+                  <code className="session-token">{session?.token}</code>
                 </div>
               )}
             </div>
-          )}
-        </section>
+          </section>
+        ) : (
+          <>
+            <section className="card">
+              <div className="card-header">
+                <div>
+                  <p className="eyebrow">Access</p>
+                  <h2>Request access</h2>
+                  <p className="muted">
+                    Enter your corporate email to request access to the
+                    register.
+                  </p>
+                </div>
+              </div>
 
-        <section className="card span-2">
+              <div className="field">
+                <span>Corporate email</span>
+                <input
+                  ref={emailInputRef}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="bfox@jsco.com"
+                />
+              </div>
+              <button
+                className="btn primary"
+                type="button"
+                onClick={handleRequestLink}
+                disabled={requesting || !configReady || sessionActive}
+              >
+                {requesting ? "Submitting..." : "Request access"}
+              </button>
+              {magicResult && (
+                <div className="callout">
+                  <div className="callout-title">Access code issued</div>
+                  <p className="muted">Enter the code to begin work.</p>
+                  {(magicResult.token || magicResult.magicLink) && (
+                    <div className="token-box">
+                      <code>
+                        {magicResult.token ||
+                          magicResult.magicLink ||
+                          "access code pending..."}
+                      </code>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="card" data-pending={pendingAccess}>
+              <div className="card-header">
+                <div>
+                  <p className="eyebrow">Identity</p>
+                  <h2>Confirm access</h2>
+                  <p className="muted">Enter the access code to continue.</p>
+                </div>
+              </div>
+
+              <div className="field">
+                <span>Access code</span>
+                <input
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="enter access code"
+                />
+              </div>
+
+              <div className="actions">
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={handleVerifyToken}
+                  disabled={
+                    verifying || !configReady || tokenInput.trim().length === 0
+                  }
+                >
+                  {verifying ? "Confirming..." : "Confirm access"}
+                </button>
+              </div>
+            </section>
+          </>
+        )}
+
+        <section className="card span-2 queue-panel" ref={queueRef}>
           <div className="card-header">
             <div>
               <p className="eyebrow">Records</p>
@@ -965,7 +1013,9 @@ export default function App() {
                   {(["all", "active", "completed"] as const).map((mode) => (
                     <button
                       key={mode}
-                      className={`filter-button ${filter === mode ? "active" : ""}`}
+                      className={`filter-button ${
+                        filter === mode ? "active" : ""
+                      }`}
                       type="button"
                       onClick={() => setFilter(mode)}
                     >
@@ -982,7 +1032,9 @@ export default function App() {
           </div>
 
           {!session && (
-            <p className="muted">Request access to create and manage records.</p>
+            <p className="muted">
+              Request access to create and manage records.
+            </p>
           )}
 
           {session && (
@@ -1161,18 +1213,11 @@ export default function App() {
                               <div className="todo-footer">
                                 <span>Created {toDate(todo.created_at)}</span>
                                 <span>
-                                  Owner:{" "}
-                                  {todo.app_user_id ? (
-                                    <span className="mono">
-                                      {shortId(todo.app_user_id)}
-                                    </span>
-                                  ) : (
-                                    "unassigned"
-                                  )}
+                                  Operator: {profile?.email || session?.email || "on file"}
                                 </span>
                                 <span>
-                                  Task:{" "}
-                                  <span className="mono">
+                                  Record:{" "}
+                                  <span className="mono" title={todo.id}>
                                     {shortId(todo.id)}
                                   </span>
                                 </span>
@@ -1240,7 +1285,7 @@ export default function App() {
                     </select>
                   </label>
                   <button
-                    className="btn primary"
+                    className="btn secondary"
                     type="button"
                     disabled={creatingTodo || !session}
                     onClick={handleCreateTodo}

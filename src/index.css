@@ -1,7 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
 :root {
   color-scheme: light;
+  --title-font: "Fraunces", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
   --bg: #e9eaec;
   --panel: #f6f7f8;
   --panel-strong: #eef0f2;
@@ -157,11 +158,18 @@ code {
   border: 1px solid var(--border);
 }
 
+.title-family {
+  font-family: var(--title-font);
+  letter-spacing: -0.02em;
+}
+
 .hero h1 {
   margin: var(--s-5) 0 var(--s-4);
-  font-size: 40px;
+  font-family: var(--title-font);
+  font-size: clamp(2.6rem, 6vw, 4.6rem);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
 }
 
 .lede {
@@ -313,8 +321,20 @@ code {
 
 .card h2 {
   margin: var(--s-2) 0 var(--s-3);
-  font-size: 20px;
+  font-family: var(--title-font);
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--navy);
+}
+
+.card h3 {
+  font-family: var(--title-font);
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  margin: var(--s-2) 0;
 }
 
 .eyebrow {
@@ -476,6 +496,7 @@ code {
 }
 
 .callout-title {
+  font-family: var(--title-font);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -581,8 +602,9 @@ code {
 
 .todo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: var(--s-6);
+  align-items: start;
 }
 
 .todo-toolbar {
@@ -594,41 +616,84 @@ code {
   flex-wrap: wrap;
 }
 
+.queue-panel .card-header {
+  align-items: flex-end;
+  margin-bottom: var(--s-6);
+  flex-wrap: wrap;
+}
+
+.queue-panel .actions-inline .btn {
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-color: var(--steel);
+  color: var(--muted);
+}
+
+.todo-header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
 .filter-group {
   display: inline-flex;
   gap: var(--s-2);
-  padding: var(--s-2);
+  padding: 4px;
   border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--panel-strong);
+  border: 1px solid var(--steel);
+  background: transparent;
 }
 
 .filter-button {
   border: 1px solid transparent;
   border-radius: 3px;
-  padding: var(--s-2) var(--s-3);
+  padding: 4px 8px;
   background: transparent;
-  color: var(--navy);
-  font-size: 13px;
+  color: var(--muted);
+  font-size: 12px;
   text-transform: capitalize;
   cursor: pointer;
 }
 
 .filter-button.active {
-  background: rgba(42, 76, 143, 0.12);
-  border-color: rgba(42, 76, 143, 0.4);
+  background: var(--panel-strong);
+  border-color: var(--steel);
   color: var(--navy);
 }
 
 .filter-button:not(.active):hover {
-  color: var(--text);
+  color: var(--navy);
 }
 
 .todo-stats {
   display: flex;
   gap: var(--s-3);
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
+}
+
+.queue-panel .todo-list {
+  padding: var(--s-4);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.queue-panel .composer {
+  padding: var(--s-5);
+  background: var(--panel-strong);
+  border-color: var(--steel);
+  box-shadow: none;
+}
+
+.queue-panel .composer .btn {
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .collection-grid {
@@ -701,14 +766,19 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
-  padding: calc(var(--s-3) + 2px) calc(var(--s-4) + 2px);
+  padding: var(--s-2) var(--s-3);
   border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--steel);
+  background: var(--panel-strong);
   position: sticky;
   top: 0;
   z-index: 2;
   margin-bottom: var(--s-5);
+  font-size: 12px;
+}
+
+.queue-panel .pagination-bar {
+  gap: var(--s-2);
 }
 
 .pagination-actions {
@@ -717,6 +787,15 @@ code {
   gap: var(--s-2);
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.queue-panel .pagination-actions .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.pagination-bar .muted {
+  margin: 0;
 }
 
 .field.inline {
@@ -732,7 +811,7 @@ code {
 
 .page-buttons {
   display: flex;
-  gap: var(--s-2);
+  gap: var(--s-1);
 }
 
 .todo-card {
@@ -785,8 +864,8 @@ code {
 }
 
 .todo-check input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--accent);
 }
 
@@ -818,10 +897,11 @@ code {
 
 .todo-title {
   margin: 0;
-  font-size: 18px;
+  font-family: var(--title-font);
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
   font-weight: 600;
   color: var(--navy);
-  letter-spacing: -0.006em;
+  letter-spacing: -0.02em;
   line-height: 1.25;
 }
 
@@ -848,6 +928,12 @@ code {
   min-width: 0;
 }
 
+.todo-footer > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-1);
+}
+
 .todo-footer .mono,
 .todo-footer code {
   font-size: 11px;
@@ -858,6 +944,7 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;
+  line-height: 1;
   max-width: 100%;
 }
 
@@ -1112,6 +1199,10 @@ code {
 
   .boss-card {
     width: 160px;
+  }
+
+  .todo-grid {
+    grid-template-columns: 1fr;
   }
 
   .dev-log-row {

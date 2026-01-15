@@ -1,14 +1,44 @@
-# ReqRes Todo App (client-only)
+# Operations Task Register (ReqRes working example)
 
-A Vite + React todo app that uses ReqRes app-user auth (magic links + session tokens) and app-scoped collections for per-user CRUD. This version is ready to ship on Cloudflare Pages.
+This repository contains a working internal task register built on ReqRes. It demonstrates authentication, scoped data access, and create/update/delete flows using a real application model for teams who want an end-to-end example.
 
-## What it does
+```bash
+cd demo-app
+npm install
+npm run dev
+```
 
-- Sends magic links with your **public project key** (`POST /api/app-users/login`)
-- Verifies the token with your **manage key** to mint an app-session (`POST /api/app-users/verify`)
-- Reads the current app user (`GET /api/app-users/me`)
-- Creates/updates/deletes todos in your collection (`/app/collections/:slug/records`)
-- Keeps everything client-only (no custom backend required)
+## Environment setup
+
+Create a free ReqRes project at https://app.reqres.in and add the public + management keys to `.env`.
+
+```bash
+cp .env.example .env
+```
+
+Required:
+- `VITE_REQRES_PROJECT_ID`
+- `VITE_REQRES_PUBLIC_KEY`
+- `VITE_REQRES_MANAGE_KEY`
+
+Optional:
+- `VITE_REQRES_BASE_URL` (defaults to `https://reqres.in`)
+- `VITE_REQRES_COLLECTION_SLUG` (defaults to `todos`)
+
+## What this demonstrates
+
+Each signed-in operator only sees their own records.
+Session tokens scope requests automatically with no user IDs passed by the client.
+The UI runs client-only while ReqRes enforces isolation and persistence.
+
+## Follow the flow
+
+| In the app | ReqRes concept |
+| --- | --- |
+| Request access | App user creation |
+| Confirm identity | Session token |
+| Create task | Collection record |
+| Refresh list | Scoped query |
 
 ## Cloudflare Pages setup
 
@@ -17,21 +47,13 @@ A Vite + React todo app that uses ReqRes app-user auth (magic links + session to
    - Build output: `demo-app/dist`
    - Root directory: `demo-app`
 2. Environment variables (set in the Pages project settings):
-   - `VITE_REQRES_BASE_URL` (optional, defaults to `https://reqres.in`)
    - `VITE_REQRES_PROJECT_ID`
    - `VITE_REQRES_PUBLIC_KEY`
    - `VITE_REQRES_MANAGE_KEY`
+   - `VITE_REQRES_BASE_URL` (optional, defaults to `https://reqres.in`)
    - `VITE_REQRES_COLLECTION_SLUG` (defaults to `todos`)
 
 > Note: `VITE_` env vars are exposed to the browser. If you need to keep the manage key private, proxy `/api/app-users/verify` through a backend or Cloudflare Pages Function.
-
-## Local dev
-
-```bash
-cd demo-app
-npm install
-npm run dev
-```
 
 ## Collection schema
 
@@ -45,11 +67,9 @@ Create a collection in ReqRes (example schema):
 }
 ```
 
-## Flow to demo
+## Why this matters
 
-1. Enter an email and send a magic link.
-2. Paste the token to mint an app-session.
-3. Create, edit, complete, and delete todos. Each app user only sees their own items.
+This replaces the usual backend setup for auth and CRUD when you want to ship a functional app quickly. You can focus on UI and workflows while ReqRes handles sessions, isolation, and persistence.
 
 ## Files to peek at
 

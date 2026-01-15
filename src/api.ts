@@ -25,6 +25,7 @@ async function jsonRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  // Keep API calls consistent: base URL normalization, headers, and error shape.
   const base = (config.baseUrl || 'https://reqres.in').replace(/\/$/, '')
   const url = `${base}${path.startsWith('/') ? path : `/${path}`}`
   const {
@@ -43,13 +44,13 @@ async function jsonRequest<T>(
   }
 
   if (require === 'session') {
-    if (!token) throw new ApiError('Session token required for this request')
+    if (!token) throw new ApiError('Access is required for this action.')
     headers.Authorization = `Bearer ${token}`
   }
 
   if (require === 'public') {
     if (!config.publicProjectKey) {
-      throw new ApiError('Public project key required for this request')
+      throw new ApiError('Public access key is missing.')
     }
     headers['x-api-key'] = config.publicProjectKey
   } else if (usePublicProjectKey && config.publicProjectKey) {
@@ -58,7 +59,7 @@ async function jsonRequest<T>(
 
   if (require === 'manage') {
     if (!config.manageProjectKey) {
-      throw new ApiError('Manage project key required for this request')
+      throw new ApiError('Management access key is missing.')
     }
     headers['x-api-key'] = config.manageProjectKey
   } else if (useManageProjectKey && config.manageProjectKey) {
@@ -144,15 +145,38 @@ export type PaginatedTodos = {
   meta: PaginationMeta
 }
 
+export async function fetchAppUserTotal(
+  config: DemoConfig,
+): Promise<number> {
+  if (!config.projectId) {
+    throw new ApiError('Project identifier is missing. Update configuration.')
+  }
+  const canUsePublic = Boolean(config.publicProjectKey)
+  const canUseManage = Boolean(config.manageProjectKey)
+  if (!canUsePublic && !canUseManage) {
+    throw new ApiError('Access key is missing. Add a public or management key.')
+  }
+  // Use a project-level key so totals load before a user session exists.
+  const res = await jsonRequest<{ total?: number }>(
+    config,
+    `/api/projects/${config.projectId}/app-users/total`,
+    {
+      method: 'GET',
+      require: canUsePublic ? 'public' : 'manage',
+    },
+  )
+  return typeof res.total === 'number' ? res.total : Number(res.total) || 0
+}
+
 export async function requestMagicLink(
   config: DemoConfig,
   email: string,
 ): Promise<MagicLinkResult> {
   if (!config.projectId) {
-    throw new ApiError('Add your project ID first')
+    throw new ApiError('Project identifier is missing. Update configuration.')
   }
   if (!config.publicProjectKey) {
-    throw new ApiError('Add the public project API key to request magic links')
+    throw new ApiError('Public access key is missing. Access requests are disabled.')
   }
 
   const res = await jsonRequest<{ data?: any }>(
@@ -181,7 +205,7 @@ export async function verifyMagicToken(
   token: string,
 ): Promise<Session> {
   if (!config.projectId) {
-    throw new ApiError('Add your project ID first')
+    throw new ApiError('Project identifier is missing. Update configuration.')
   }
   const res = await jsonRequest<{ data: any }>(
     config,
@@ -224,7 +248,7 @@ export async function fetchTodos(
   opts: { page?: number; limit?: number; order?: 'asc' | 'desc' } = {},
 ): Promise<PaginatedTodos> {
   if (!config.collectionSlug) {
-    throw new ApiError('Add a collection slug to pull todos')
+    throw new ApiError('Task register is not configured.')
   }
 
   const page = Math.max(1, Number(opts.page) || 1)
@@ -268,7 +292,7 @@ export async function createTodo(
   todo: TodoPayload,
 ): Promise<TodoItem> {
   if (!config.collectionSlug) {
-    throw new ApiError('Add a collection slug before creating todos')
+    throw new ApiError('Task register is not configured.')
   }
 
   const res = await jsonRequest<{ data: TodoItem }>(
@@ -292,7 +316,7 @@ export async function updateTodo(
   todo: TodoPayload,
 ): Promise<TodoItem> {
   if (!config.collectionSlug) {
-    throw new ApiError('Add a collection slug before updating todos')
+    throw new ApiError('Task register is not configured.')
   }
 
   const res = await jsonRequest<{ data: TodoItem }>(
@@ -315,7 +339,7 @@ export async function deleteTodo(
   todoId: string,
 ): Promise<void> {
   if (!config.collectionSlug) {
-    throw new ApiError('Add a collection slug before deleting todos')
+    throw new ApiError('Task register is not configured.')
   }
 
   await jsonRequest<void>(

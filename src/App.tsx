@@ -320,9 +320,7 @@ export default function App() {
   ): Promise<T> => {
     // Centralized request logging for the developer console.
     const id = createLogId();
-    const requestBody = entry.requestBody
-      ? formatJson(entry.requestBody)
-      : "";
+    const requestBody = entry.requestBody ? formatJson(entry.requestBody) : "";
     const logEntry: ApiRequestLog = {
       ...entry,
       id,
@@ -456,6 +454,12 @@ export default function App() {
 
   const handleRequestLink = async () => {
     if (!ensureConfigReady()) return;
+    const trimmedEmail = email.trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    if (!emailOk) {
+      setError("Enter a valid email address.");
+      return;
+    }
     setRequesting(true);
     setStatus(null);
     setError(null);
@@ -466,11 +470,11 @@ export default function App() {
           path: "/api/app-users/login",
           description: "Request access for the current operator.",
           requestBody: {
-            email: email.trim(),
+            email: trimmedEmail,
             project_id: config.projectId,
           },
         },
-        () => requestMagicLink(config, email.trim())
+        () => requestMagicLink(config, trimmedEmail)
       );
       setMagicResult(res);
       if (res.token) setTokenInput(res.token);
@@ -973,6 +977,9 @@ export default function App() {
                 <span>Corporate email</span>
                 <input
                   ref={emailInputRef}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="bfox@jsco.com"
@@ -1263,7 +1270,10 @@ export default function App() {
                               <div className="todo-footer">
                                 <span>Created {toDate(todo.created_at)}</span>
                                 <span>
-                                  Operator: {profile?.email || session?.email || "on file"}
+                                  Operator:{" "}
+                                  {profile?.email ||
+                                    session?.email ||
+                                    "on file"}
                                 </span>
                                 <span>
                                   Record:{" "}

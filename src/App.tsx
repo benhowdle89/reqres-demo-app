@@ -132,6 +132,8 @@ type ApiRequestLog = {
   path: string;
   description: string;
   status: RequestLogStatus;
+  requestBody?: string;
+  responseBody?: string;
   errorMessage?: string;
 };
 
@@ -142,6 +144,26 @@ const createLogId = () => {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const formatJson = (value: unknown) => {
+  if (value === undefined) return "";
+  if (value === null) return "null";
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    try {
+      return JSON.stringify(JSON.parse(trimmed), null, 2);
+    } catch {
+      return trimmed;
+    }
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 };
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -290,21 +312,33 @@ export default function App() {
   };
 
   const trackRequest = async <T,>(
-    entry: Omit<ApiRequestLog, "id" | "time" | "status" | "errorMessage">,
+    entry: Omit<
+      ApiRequestLog,
+      "id" | "time" | "status" | "errorMessage" | "responseBody" | "requestBody"
+    > & { requestBody?: unknown },
     action: () => Promise<T>
   ): Promise<T> => {
     // Centralized request logging for the developer console.
     const id = createLogId();
+    const requestBody = entry.requestBody
+      ? formatJson(entry.requestBody)
+      : "";
     const logEntry: ApiRequestLog = {
       ...entry,
       id,
       time: new Date().toLocaleTimeString(),
       status: "pending",
+      requestBody: requestBody || undefined,
     };
     pushRequestLog(logEntry);
     try {
       const result = await action();
-      updateRequestLog(id, { status: "success" });
+      updateRequestLog(id, {
+        status: "success",
+        responseBody: formatJson(
+          result === undefined ? null : (result as unknown)
+        ),
+      });
       return result;
     } catch (err) {
       const message =
@@ -313,7 +347,12 @@ export default function App() {
           : err instanceof Error
           ? err.message
           : "Request failed";
-      updateRequestLog(id, { status: "error", errorMessage: message });
+      updateRequestLog(id, {
+        status: "error",
+        errorMessage: message,
+        responseBody:
+          err instanceof ApiError ? formatJson(err.details ?? null) : undefined,
+      });
       throw err;
     }
   };
@@ -426,6 +465,10 @@ export default function App() {
           method: "POST",
           path: "/api/app-users/login",
           description: "Request access for the current operator.",
+          requestBody: {
+            email: email.trim(),
+            project_id: config.projectId,
+          },
         },
         () => requestMagicLink(config, email.trim())
       );
@@ -459,6 +502,10 @@ export default function App() {
           method: "POST",
           path: "/api/app-users/verify",
           description: "Confirm access and establish operator context.",
+          requestBody: {
+            token: tokenInput.trim(),
+            project_id: config.projectId,
+          },
         },
         () => verifyMagicToken(config, tokenInput.trim())
       );
@@ -583,6 +630,7 @@ export default function App() {
           method: "POST",
           path: `/app/collections/${slug}/records`,
           description: "Create a record for the current operator.",
+          requestBody: { data: payload },
         },
         () => createTodo(config, activeSession.token, payload)
       );
@@ -641,6 +689,7 @@ export default function App() {
             todoId
           )}`,
           description: "Update record details or status.",
+          requestBody: { data: payload },
         },
         () => updateTodo(config, activeSession.token, todoId, payload)
       );
@@ -684,6 +733,7 @@ export default function App() {
           description: payload.completed
             ? "Mark a record as completed."
             : "Return a record to in progress.",
+          requestBody: { data: payload },
         },
         () => updateTodo(config, activeSession.token, todo.id, payload)
       );
@@ -1337,6 +1387,22 @@ export default function App() {
                       <span>{log.description}</span>
                       {log.status === "error" && log.errorMessage && (
                         <span className="dev-error">{log.errorMessage}</span>
+                      )}
+                      {log.requestBody && (
+                        <div className="dev-payload">
+                          <span className="dev-payload-label">
+                            Request body
+                          </span>
+                          <pre>{log.requestBody}</pre>
+                        </div>
+                      )}
+                      {log.responseBody && (
+                        <div className="dev-payload">
+                          <span className="dev-payload-label">
+                            Response body
+                          </span>
+                          <pre>{log.responseBody}</pre>
+                        </div>
                       )}
                     </div>
                     <span className={`dev-status status-${log.status}`}>

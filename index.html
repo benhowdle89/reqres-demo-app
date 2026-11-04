@@ -26,7 +26,14 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Shown until the app loads (and to crawlers that don't run JS); React replaces it. -->
+    <div id="root">
+      <main style="max-width: 40rem; margin: 4rem auto; padding: 0 1rem; font-family: system-ui, sans-serif">
+        <h1>Operations Task Register</h1>
+        <p>A demo todo app built on ReqRes, showing app-user sign-up, login and per-user tasks with no backend of its own.</p>
+        <p><a href="https://reqres.in">Build your own on ReqRes</a></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
